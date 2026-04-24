@@ -1,0 +1,137 @@
+{
+  "info": {
+    "name": "HMIS API",
+    "_postman_id": "3f85c6e0-hmis-0001-collection",
+    "description": "End-to-end smoke tests for HMIS gateway + microservices.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",  "value": "http://localhost:8080" },
+    { "key": "username", "value": "drrao" },
+    { "key": "password", "value": "password" },
+    { "key": "accessToken", "value": "" },
+    { "key": "patientId", "value": "" },
+    { "key": "invoiceId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] },
+            "body":   { "mode": "raw", "raw": "{\"username\":\"{{username}}\",\"password\":\"{{password}}\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.expect(json.accessToken).to.be.a('string');",
+              "pm.collectionVariables.set('accessToken', json.accessToken);"
+            ]}
+          }]
+        }
+      ]
+    },
+    {
+      "name": "Patient",
+      "item": [
+        {
+          "name": "Create Patient",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/v1/patients" },
+            "body":   { "mode": "raw", "raw": "{\"firstName\":\"Test\",\"lastName\":\"User\",\"dob\":\"1990-01-01\",\"gender\":\"M\",\"phone\":\"+919999999999\"}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('patientId', json.id);"
+            ]}
+          }]
+        },
+        {
+          "name": "Get Patient",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/patients/{{patientId}}" }
+          }
+        },
+        {
+          "name": "List Patients",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/patients?page=0&size=10" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Book Appointment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/v1/appointments" },
+            "body":   { "mode": "raw", "raw": "{\"patientId\":{{patientId}},\"doctorId\":22,\"slotStart\":\"2026-05-01T10:00:00Z\",\"slotEnd\":\"2026-05-01T10:20:00Z\",\"reason\":\"smoke test\"}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Billing",
+      "item": [
+        {
+          "name": "Create Invoice",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/v1/invoices" },
+            "body":   { "mode": "raw", "raw": "{\"patientId\":{{patientId}},\"items\":[{\"itemType\":\"CONSULT\",\"description\":\"Consult\",\"qty\":1,\"unitPrice\":500,\"tax\":90}]}" }
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('invoiceId', pm.response.json().id);"
+            ]}
+          }]
+        },
+        {
+          "name": "Pay Invoice",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url":    { "raw": "{{baseUrl}}/api/v1/payments" },
+            "body":   { "mode": "raw", "raw": "{\"invoiceId\":{{invoiceId}},\"method\":\"UPI\",\"amount\":590,\"txnRef\":\"UPI/xxx/yyy\"}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Daily MIS",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/reports/mis/daily?site=MAIN&date=2026-04-23" }
+          }
+        }
+      ]
+    }
+  ]
+}

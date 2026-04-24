@@ -1,0 +1,15 @@
+roles:
+  - code: ADMIN
+    description: Full administrative access
+  - code: DOCTOR
+    description: Clinical access, prescribing, discharge
+  - code: NURSE
+    description: Bedside care, vitals, medication administration
+  - code: LAB_TECH
+    description: Sample handling, result entry
+  - code: PHARMACIST
+    description: Inventory, dispensing
+  - code: RECEPTIONIST
+    description: Registration, appointments, front-desk billing
+  - code: PATIENT
+    description: Self-service portal, own records

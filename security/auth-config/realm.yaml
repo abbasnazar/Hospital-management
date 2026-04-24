@@ -1,0 +1,19 @@
+realm: hmis
+issuer: hmis-auth
+jwt:
+  algorithm: HS256            # swap to RS256 in prod and publish JWKs
+  accessTokenTtlSeconds: 900
+  refreshTokenTtlSeconds: 2592000
+mfa:
+  enabled: true
+  requireForRoles: [ADMIN, DOCTOR, PHARMACIST]
+password:
+  minLength: 8
+  requireUpper: true
+  requireDigit:  true
+  requireSymbol: false
+  bcryptStrength: 12
+lockout:
+  failedAttempts: 5
+  windowSeconds:  600
+  lockSeconds:    900

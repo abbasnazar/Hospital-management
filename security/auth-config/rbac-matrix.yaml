@@ -1,0 +1,33 @@
+# Coarse-grained RBAC enforced at the API Gateway.
+# Fine-grained, row-level checks are enforced within each service.
+rbac:
+  - resource: /api/v1/patients
+    verbs: [GET]
+    roles: [ADMIN, DOCTOR, NURSE, LAB_TECH, PHARMACIST, RECEPTIONIST]
+  - resource: /api/v1/patients
+    verbs: [POST, PUT, DELETE]
+    roles: [ADMIN, RECEPTIONIST, DOCTOR]
+  - resource: /api/v1/appointments
+    verbs: [POST]
+    roles: [ADMIN, RECEPTIONIST, DOCTOR, NURSE, PATIENT]
+  - resource: /api/v1/consultations
+    verbs: [POST, PUT]
+    roles: [DOCTOR]
+  - resource: /api/v1/lab
+    verbs: [POST]
+    roles: [DOCTOR, NURSE, LAB_TECH]
+  - resource: /api/v1/prescriptions
+    verbs: [POST]
+    roles: [DOCTOR]
+  - resource: /api/v1/dispenses
+    verbs: [POST]
+    roles: [PHARMACIST]
+  - resource: /api/v1/invoices
+    verbs: [POST]
+    roles: [ADMIN, RECEPTIONIST]
+  - resource: /api/v1/payments
+    verbs: [POST]
+    roles: [ADMIN, RECEPTIONIST, PATIENT]
+  - resource: /api/v1/reports
+    verbs: [GET]
+    roles: [ADMIN, DOCTOR]

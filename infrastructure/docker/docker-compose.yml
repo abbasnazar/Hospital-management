@@ -1,0 +1,164 @@
+##
+## HMIS — local dev orchestration (Node.js services + MySQL + Redis + Angular SPA)
+##
+## Usage:
+##   cd infrastructure/docker
+##   docker compose up -d --build
+##
+## First run seeds the schema and demo data automatically via
+## /docker-entrypoint-initdb.d.
+##
+
+name: hmis
+
+x-node-env: &node-env
+  NODE_ENV: production
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_NAME: hmis
+  DB_USER: hmis
+  DB_PASS: hmis
+  JWT_SECRET: "dev-secret-change-me-change-me-change-me-change-me-64chars"
+  JWT_ISSUER: hmis-auth
+
+x-healthy: &healthy
+  interval: 15s
+  timeout: 5s
+  retries: 10
+  start_period: 20s
+
+services:
+  # ---------------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.3
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: hmis
+      MYSQL_USER: hmis
+      MYSQL_PASSWORD: hmis
+    command:
+      - --default-authentication-plugin=caching_sha2_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ../../database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ../../database/seed_data.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -proot"]
+      <<: *healthy
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      <<: *healthy
+
+  # ---------------------------------------------------------------------------
+  # Microservices
+  # ---------------------------------------------------------------------------
+  auth-service:
+    build: ../../services/auth-service
+    environment: { <<: *node-env, PORT: "8081" }
+    depends_on:
+      mysql:  { condition: service_healthy }
+      redis:  { condition: service_healthy }
+    ports: ["8081:8081"]
+    restart: unless-stopped
+
+  patient-service:
+    build: ../../services/patient-service
+    environment: { <<: *node-env, PORT: "8082" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8082:8082"]
+    restart: unless-stopped
+
+  doctor-service:
+    build: ../../services/doctor-service
+    environment: { <<: *node-env, PORT: "8083" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8083:8083"]
+    restart: unless-stopped
+
+  lab-service:
+    build: ../../services/lab-service
+    environment: { <<: *node-env, PORT: "8084" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8084:8084"]
+    restart: unless-stopped
+
+  pharmacy-service:
+    build: ../../services/pharmacy-service
+    environment: { <<: *node-env, PORT: "8085" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8085:8085"]
+    restart: unless-stopped
+
+  billing-service:
+    build: ../../services/billing-service
+    environment: { <<: *node-env, PORT: "8086" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8086:8086"]
+    restart: unless-stopped
+
+  reporting-service:
+    build: ../../services/reporting-service
+    environment: { <<: *node-env, PORT: "8087" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8087:8087"]
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # API Gateway
+  # ---------------------------------------------------------------------------
+  api-gateway:
+    build: ../../gateway/api-gateway
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      JWT_SECRET: "dev-secret-change-me-change-me-change-me-change-me-64chars"
+      JWT_ISSUER: hmis-auth
+      REDIS_URL: redis://redis:6379
+      AUTH_URL:      http://auth-service:8081
+      PATIENT_URL:   http://patient-service:8082
+      DOCTOR_URL:    http://doctor-service:8083
+      LAB_URL:       http://lab-service:8084
+      PHARMACY_URL:  http://pharmacy-service:8085
+      BILLING_URL:   http://billing-service:8086
+      REPORTING_URL: http://reporting-service:8087
+    depends_on:
+      - auth-service
+      - patient-service
+      - doctor-service
+      - lab-service
+      - pharmacy-service
+      - billing-service
+      - reporting-service
+    ports: ["8080:8080"]
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Angular SPA
+  # ---------------------------------------------------------------------------
+  angular-app:
+    build: ../../frontend/angular-app
+    depends_on: [api-gateway]
+    ports: ["4200:80"]
+    restart: unless-stopped
+
+volumes:
+  mysql-data:

@@ -1,0 +1,448 @@
+# =============================================================================
+# HMIS — Kubernetes manifests (dev/reference)
+# Node.js microservices + MySQL 8 + Redis + API gateway + Angular SPA.
+# Apply with:
+#   kubectl apply -f deployment.yaml
+# =============================================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hmis
+  labels: { app.kubernetes.io/part-of: hmis }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hmis-config
+  namespace: hmis
+data:
+  DB_HOST: "mysql"
+  DB_PORT: "3306"
+  DB_NAME: "hmis"
+  JWT_ISSUER: "hmis-auth"
+  REDIS_URL: "redis://redis:6379"
+  AUTH_URL:      "http://auth-service:8081"
+  PATIENT_URL:   "http://patient-service:8082"
+  DOCTOR_URL:    "http://doctor-service:8083"
+  LAB_URL:       "http://lab-service:8084"
+  PHARMACY_URL:  "http://pharmacy-service:8085"
+  BILLING_URL:   "http://billing-service:8086"
+  REPORTING_URL: "http://reporting-service:8087"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hmis-secret
+  namespace: hmis
+type: Opaque
+stringData:
+  DB_USER: "hmis"
+  DB_PASS: "hmis"
+  DB_ROOT_PASSWORD: "root"
+  JWT_SECRET: "dev-secret-change-me-change-me-change-me-change-me-64chars"
+
+# =============================================================================
+# MySQL 8
+# =============================================================================
+---
+apiVersion: v1
+kind: Service
+metadata: { name: mysql, namespace: hmis }
+spec:
+  clusterIP: None
+  selector: { app: mysql }
+  ports: [{ port: 3306, targetPort: 3306 }]
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: mysql, namespace: hmis }
+spec:
+  serviceName: mysql
+  replicas: 1
+  selector: { matchLabels: { app: mysql } }
+  template:
+    metadata: { labels: { app: mysql } }
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.3
+          args:
+            - --default-authentication-plugin=caching_sha2_password
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_0900_ai_ci
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_ROOT_PASSWORD } }
+            - name: MYSQL_DATABASE
+              valueFrom: { configMapKeyRef: { name: hmis-config, key: DB_NAME } }
+            - name: MYSQL_USER
+              valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_USER } }
+            - name: MYSQL_PASSWORD
+              valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_PASS } }
+          ports: [{ containerPort: 3306 }]
+          volumeMounts: [{ name: data, mountPath: /var/lib/mysql }]
+          readinessProbe:
+            exec: { command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-proot"] }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "200m", memory: "512Mi" }
+            limits:   { cpu: "1000m", memory: "1Gi" }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources: { requests: { storage: 10Gi } }
+
+# =============================================================================
+# Redis
+# =============================================================================
+---
+apiVersion: v1
+kind: Service
+metadata: { name: redis, namespace: hmis }
+spec:
+  selector: { app: redis }
+  ports: [{ port: 6379, targetPort: 6379 }]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: redis, namespace: hmis }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: redis } }
+  template:
+    metadata: { labels: { app: redis } }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports: [{ containerPort: 6379 }]
+          resources:
+            requests: { cpu: "50m",  memory: "64Mi" }
+            limits:   { cpu: "200m", memory: "256Mi" }
+
+# =============================================================================
+# Reusable snippet: each microservice has identical shape; only image + port
+# differ. Kept inline for readability; replace with a Helm chart for prod.
+# =============================================================================
+
+# --- auth-service ------------------------------------------------------------
+---
+apiVersion: v1
+kind: Service
+metadata: { name: auth-service, namespace: hmis }
+spec:
+  selector: { app: auth-service }
+  ports: [{ port: 8081, targetPort: 8081 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: auth-service, namespace: hmis }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: auth-service } }
+  template:
+    metadata: { labels: { app: auth-service } }
+    spec:
+      containers:
+        - name: auth-service
+          image: hmis/auth-service:local
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8081 }]
+          env:
+            - { name: PORT,       value: "8081" }
+            - { name: NODE_ENV,   value: "production" }
+            - { name: DB_HOST,    valueFrom: { configMapKeyRef: { name: hmis-config, key: DB_HOST } } }
+            - { name: DB_PORT,    valueFrom: { configMapKeyRef: { name: hmis-config, key: DB_PORT } } }
+            - { name: DB_NAME,    valueFrom: { configMapKeyRef: { name: hmis-config, key: DB_NAME } } }
+            - { name: JWT_ISSUER, valueFrom: { configMapKeyRef: { name: hmis-config, key: JWT_ISSUER } } }
+            - { name: DB_USER,    valueFrom: { secretKeyRef:    { name: hmis-secret, key: DB_USER } } }
+            - { name: DB_PASS,    valueFrom: { secretKeyRef:    { name: hmis-secret, key: DB_PASS } } }
+            - { name: JWT_SECRET, valueFrom: { secretKeyRef:    { name: hmis-secret, key: JWT_SECRET } } }
+          readinessProbe: { httpGet: { path: /health, port: 8081 }, initialDelaySeconds: 10, periodSeconds: 10 }
+          livenessProbe:  { httpGet: { path: /health, port: 8081 }, initialDelaySeconds: 30, periodSeconds: 30 }
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "384Mi" }
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: auth-service, namespace: hmis }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: auth-service }
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } }
+
+# --- patient-service ---------------------------------------------------------
+---
+apiVersion: v1
+kind: Service
+metadata: { name: patient-service, namespace: hmis }
+spec: { selector: { app: patient-service }, ports: [{ port: 8082, targetPort: 8082 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: patient-service, namespace: hmis }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: patient-service } }
+  template:
+    metadata: { labels: { app: patient-service } }
+    spec:
+      containers:
+        - name: patient-service
+          image: hmis/patient-service:local
+          ports: [{ containerPort: 8082 }]
+          envFrom: [{ configMapRef: { name: hmis-config } }]
+          env:
+            - { name: PORT,       value: "8082" }
+            - { name: DB_USER,    valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_USER } } }
+            - { name: DB_PASS,    valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_PASS } } }
+            - { name: JWT_SECRET, valueFrom: { secretKeyRef: { name: hmis-secret, key: JWT_SECRET } } }
+          readinessProbe: { httpGet: { path: /health, port: 8082 }, initialDelaySeconds: 10, periodSeconds: 10 }
+          resources: { requests: { cpu: "100m", memory: "128Mi" }, limits: { cpu: "500m", memory: "384Mi" } }
+
+# --- doctor-service ----------------------------------------------------------
+---
+apiVersion: v1
+kind: Service
+metadata: { name: doctor-service, namespace: hmis }
+spec: { selector: { app: doctor-service }, ports: [{ port: 8083, targetPort: 8083 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: doctor-service, namespace: hmis }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: doctor-service } }
+  template:
+    metadata: { labels: { app: doctor-service } }
+    spec:
+      containers:
+        - name: doctor-service
+          image: hmis/doctor-service:local
+          ports: [{ containerPort: 8083 }]
+          envFrom: [{ configMapRef: { name: hmis-config } }]
+          env:
+            - { name: PORT,       value: "8083" }
+            - { name: DB_USER,    valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_USER } } }
+            - { name: DB_PASS,    valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_PASS } } }
+            - { name: JWT_SECRET, valueFrom: { secretKeyRef: { name: hmis-secret, key: JWT_SECRET } } }
+          readinessProbe: { httpGet: { path: /health, port: 8083 }, initialDelaySeconds: 10, periodSeconds: 10 }
+          resources: { requests: { cpu: "100m", memory: "128Mi" }, limits: { cpu: "500m", memory: "384Mi" } }
+
+# --- lab-service -------------------------------------------------------------
+---
+apiVersion: v1
+kind: Service
+metadata: { name: lab-service, namespace: hmis }
+spec: { selector: { app: lab-service }, ports: [{ port: 8084, targetPort: 8084 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: lab-service, namespace: hmis }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: lab-service } }
+  template:
+    metadata: { labels: { app: lab-service } }
+    spec:
+      containers:
+        - name: lab-service
+          image: hmis/lab-service:local
+          ports: [{ containerPort: 8084 }]
+          envFrom: [{ configMapRef: { name: hmis-config } }]
+          env:
+            - { name: PORT,       value: "8084" }
+            - { name: DB_USER,    valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_USER } } }
+            - { name: DB_PASS,    valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_PASS } } }
+            - { name: JWT_SECRET, valueFrom: { secretKeyRef: { name: hmis-secret, key: JWT_SECRET } } }
+          readinessProbe: { httpGet: { path: /health, port: 8084 }, initialDelaySeconds: 10, periodSeconds: 10 }
+          resources: { requests: { cpu: "100m", memory: "128Mi" }, limits: { cpu: "500m", memory: "384Mi" } }
+
+# --- pharmacy-service --------------------------------------------------------
+---
+apiVersion: v1
+kind: Service
+metadata: { name: pharmacy-service, namespace: hmis }
+spec: { selector: { app: pharmacy-service }, ports: [{ port: 8085, targetPort: 8085 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: pharmacy-service, namespace: hmis }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: pharmacy-service } }
+  template:
+    metadata: { labels: { app: pharmacy-service } }
+    spec:
+      containers:
+        - name: pharmacy-service
+          image: hmis/pharmacy-service:local
+          ports: [{ containerPort: 8085 }]
+          envFrom: [{ configMapRef: { name: hmis-config } }]
+          env:
+            - { name: PORT,       value: "8085" }
+            - { name: DB_USER,    valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_USER } } }
+            - { name: DB_PASS,    valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_PASS } } }
+            - { name: JWT_SECRET, valueFrom: { secretKeyRef: { name: hmis-secret, key: JWT_SECRET } } }
+          readinessProbe: { httpGet: { path: /health, port: 8085 }, initialDelaySeconds: 10, periodSeconds: 10 }
+          resources: { requests: { cpu: "100m", memory: "128Mi" }, limits: { cpu: "500m", memory: "384Mi" } }
+
+# --- billing-service ---------------------------------------------------------
+---
+apiVersion: v1
+kind: Service
+metadata: { name: billing-service, namespace: hmis }
+spec: { selector: { app: billing-service }, ports: [{ port: 8086, targetPort: 8086 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: billing-service, namespace: hmis }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: billing-service } }
+  template:
+    metadata: { labels: { app: billing-service } }
+    spec:
+      containers:
+        - name: billing-service
+          image: hmis/billing-service:local
+          ports: [{ containerPort: 8086 }]
+          envFrom: [{ configMapRef: { name: hmis-config } }]
+          env:
+            - { name: PORT,       value: "8086" }
+            - { name: DB_USER,    valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_USER } } }
+            - { name: DB_PASS,    valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_PASS } } }
+            - { name: JWT_SECRET, valueFrom: { secretKeyRef: { name: hmis-secret, key: JWT_SECRET } } }
+          readinessProbe: { httpGet: { path: /health, port: 8086 }, initialDelaySeconds: 10, periodSeconds: 10 }
+          resources: { requests: { cpu: "100m", memory: "128Mi" }, limits: { cpu: "500m", memory: "384Mi" } }
+
+# --- reporting-service -------------------------------------------------------
+---
+apiVersion: v1
+kind: Service
+metadata: { name: reporting-service, namespace: hmis }
+spec: { selector: { app: reporting-service }, ports: [{ port: 8087, targetPort: 8087 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: reporting-service, namespace: hmis }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: reporting-service } }
+  template:
+    metadata: { labels: { app: reporting-service } }
+    spec:
+      containers:
+        - name: reporting-service
+          image: hmis/reporting-service:local
+          ports: [{ containerPort: 8087 }]
+          envFrom: [{ configMapRef: { name: hmis-config } }]
+          env:
+            - { name: PORT,       value: "8087" }
+            - { name: DB_USER,    valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_USER } } }
+            - { name: DB_PASS,    valueFrom: { secretKeyRef: { name: hmis-secret, key: DB_PASS } } }
+            - { name: JWT_SECRET, valueFrom: { secretKeyRef: { name: hmis-secret, key: JWT_SECRET } } }
+          readinessProbe: { httpGet: { path: /health, port: 8087 }, initialDelaySeconds: 10, periodSeconds: 10 }
+          resources: { requests: { cpu: "100m", memory: "128Mi" }, limits: { cpu: "500m", memory: "384Mi" } }
+
+# =============================================================================
+# API Gateway
+# =============================================================================
+---
+apiVersion: v1
+kind: Service
+metadata: { name: api-gateway, namespace: hmis }
+spec:
+  selector: { app: api-gateway }
+  ports: [{ port: 8080, targetPort: 8080 }]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: api-gateway, namespace: hmis }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: api-gateway } }
+  template:
+    metadata: { labels: { app: api-gateway } }
+    spec:
+      containers:
+        - name: api-gateway
+          image: hmis/api-gateway:local
+          ports: [{ containerPort: 8080 }]
+          envFrom: [{ configMapRef: { name: hmis-config } }]
+          env:
+            - { name: PORT,       value: "8080" }
+            - { name: NODE_ENV,   value: "production" }
+            - { name: JWT_SECRET, valueFrom: { secretKeyRef: { name: hmis-secret, key: JWT_SECRET } } }
+          readinessProbe: { httpGet: { path: /health, port: 8080 }, initialDelaySeconds: 5,  periodSeconds: 10 }
+          livenessProbe:  { httpGet: { path: /health, port: 8080 }, initialDelaySeconds: 30, periodSeconds: 30 }
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "384Mi" }
+
+# =============================================================================
+# Angular SPA
+# =============================================================================
+---
+apiVersion: v1
+kind: Service
+metadata: { name: angular-app, namespace: hmis }
+spec:
+  selector: { app: angular-app }
+  ports: [{ port: 80, targetPort: 80 }]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: angular-app, namespace: hmis }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: angular-app } }
+  template:
+    metadata: { labels: { app: angular-app } }
+    spec:
+      containers:
+        - name: angular-app
+          image: hmis/angular-app:local
+          ports: [{ containerPort: 80 }]
+          readinessProbe: { httpGet: { path: /, port: 80 }, initialDelaySeconds: 5,  periodSeconds: 10 }
+          resources:
+            requests: { cpu: "50m",  memory: "64Mi" }
+            limits:   { cpu: "200m", memory: "128Mi" }
+
+# =============================================================================
+# Ingress
+# =============================================================================
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hmis-ingress
+  namespace: hmis
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: hmis.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend: { service: { name: api-gateway, port: { number: 8080 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: angular-app, port: { number: 80 } } }

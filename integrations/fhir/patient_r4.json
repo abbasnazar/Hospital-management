@@ -1,0 +1,23 @@
+{
+  "resourceType": "Patient",
+  "id": "101",
+  "identifier": [
+    {
+      "system": "urn:hmis:mrn",
+      "value":  "H001-2026-000101"
+    }
+  ],
+  "active": true,
+  "name": [
+    { "use": "official", "family": "Patel", "given": ["Meera"] }
+  ],
+  "telecom": [
+    { "system": "phone", "value": "+919812345678", "use": "mobile" },
+    { "system": "email", "value": "meera@example.com" }
+  ],
+  "gender":    "female",
+  "birthDate": "1990-05-14",
+  "address": [
+    { "use": "home", "text": "12 Park Lane, Aligarh" }
+  ]
+}
