@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/hmis",
+  "framework": "angular",
+  "env": {
+    "API_GATEWAY_URL": "@api_gateway_url"
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
