@@ -44,3 +44,5 @@ function requireRoles(...allowed) {
 }
 
 module.exports = { authRequired, requireRoles };
+
+function requireFunc(...funcs) { return (req, _res, next) => { if (!req.user) return next(Unauthorized("auth required")); const userFuncs = req.user.funcs || []; if (funcs.some(f => userFuncs.includes(f))) return next(); return next(Forbidden(`requires: ${funcs.join(", ")}`)); }; }

@@ -1,7 +1,7 @@
 'use strict';
 
 const bcrypt       = require('bcryptjs');
-const { User, Role } = require('../models');
+const { User, Role, PermRole, PermGroup, Functionality } = require('../models');
 const jwtSvc       = require('./jwt.service');
 const totp         = require('./totp.service');
 const config       = require('../config');
@@ -26,7 +26,10 @@ async function register({ username, email, password, roles }) {
 async function login({ username, password, otp }) {
   const user = await User.findOne({
     where: { username },
-    include: [{ model: Role, as: 'roles' }],
+    include: [
+      { model: Role, as: 'roles' },
+      { model: PermRole, as: 'permRoles', include: [{ model: PermGroup, as: 'groups', include: [{ model: Functionality, as: 'functionalities' }] }] },
+    ],
   });
   if (!user)                         throw Unauthorized('invalid credentials');
   if (user.status !== 'ACTIVE')      throw Unauthorized(`account status ${user.status}`);
@@ -55,7 +58,24 @@ async function login({ username, password, otp }) {
   user.lastLoginAt    = new Date();
   await user.save();
 
-  const accessToken       = jwtSvc.signAccessToken(user, user.roles || []);
+  // Resolve functionalities from permission roles
+  const funcSet = new Set();
+  if (user.permRoles && Array.isArray(user.permRoles)) {
+    user.permRoles.forEach(role => {
+      if (role.groups && Array.isArray(role.groups)) {
+        role.groups.forEach(group => {
+          if (group.functionalities && Array.isArray(group.functionalities)) {
+            group.functionalities.forEach(func => {
+              funcSet.add(func.code);
+            });
+          }
+        });
+      }
+    });
+  }
+  const functionalities = Array.from(funcSet).map(code => ({ code }));
+
+  const accessToken       = jwtSvc.signAccessToken(user, user.roles || [], functionalities);
   const { token: refresh } = jwtSvc.signRefreshToken(user);
 
   return {
@@ -64,6 +84,8 @@ async function login({ username, password, otp }) {
     tokenType:    'Bearer',
     expiresIn:    config.jwt.accessTtl,
     roles:        (user.roles || []).map((r) => r.code),
+    funcs:        Array.from(funcSet),
+    orgId:        user.orgId,
   };
 }
 

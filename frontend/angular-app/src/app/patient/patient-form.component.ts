@@ -27,6 +27,13 @@ import { environment } from '../../environments/environment';
         <div><label>Email</label><input type="email" [(ngModel)]="model.email" name="e"></div>
         <div><label>Blood group</label><input [(ngModel)]="model.bloodGroup" name="bg"></div>
         <div><label>Emergency contact</label><input [(ngModel)]="model.emergencyContact" name="ec"></div>
+        <div>
+          <label>Visit category</label>
+          <select [(ngModel)]="model.visitCategory" name="vc" required>
+            <option value="OPD">OPD (Out-Patient)</option>
+            <option value="CASUALTY">Casualty (Emergency)</option>
+          </select>
+        </div>
       </div>
       <label>Address</label>
       <textarea [(ngModel)]="model.address" name="a" rows="2"></textarea>
@@ -48,7 +55,7 @@ export class PatientFormComponent {
 
   model = {
     firstName: '', lastName: '', dob: '', gender: '',
-    phone: '', email: '', address: '', emergencyContact: '', bloodGroup: ''
+    phone: '', email: '', address: '', emergencyContact: '', bloodGroup: '', visitCategory: 'OPD'
   };
   loading = signal(false);
   error   = signal<string | null>(null);

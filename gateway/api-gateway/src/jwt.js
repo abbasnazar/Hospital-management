@@ -35,6 +35,7 @@ function authenticate(req, res, next) {
       id:    claims.uid,
       name:  claims.sub,
       roles: claims.roles || [],
+      funcs: claims.funcs || [],
     };
     next();
   } catch (e) {
@@ -47,6 +48,7 @@ function propagate(proxyReq, req) {
     proxyReq.setHeader('X-User-Id',    String(req.gwUser.id));
     proxyReq.setHeader('X-User-Name',  String(req.gwUser.name));
     proxyReq.setHeader('X-User-Roles', (req.gwUser.roles || []).join(','));
+    proxyReq.setHeader('X-User-Funcs', (req.gwUser.funcs || []).join(','));
   }
 }
 

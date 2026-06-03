@@ -16,6 +16,7 @@ const schemas = {
     address:          Joi.string().max(500).optional(),
     emergencyContact: Joi.string().max(120).optional(),
     bloodGroup:       Joi.string().max(4).optional(),
+    visitCategory:    Joi.string().valid('OPD','CASUALTY').default('OPD'),
   }),
   update: Joi.object({
     firstName:        Joi.string().min(1).max(80).optional(),
@@ -27,6 +28,7 @@ const schemas = {
     address:          Joi.string().max(500).optional(),
     emergencyContact: Joi.string().max(120).optional(),
     bloodGroup:       Joi.string().max(4).optional(),
+    visitCategory:    Joi.string().valid('OPD','CASUALTY').optional(),
   }).min(1),
   query: Joi.object({
     q:    Joi.string().max(80).optional(),

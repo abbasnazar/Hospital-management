@@ -15,6 +15,7 @@ const Patient = sequelize.define('Patient', {
   address:          { type: DataTypes.TEXT,        allowNull: true  },
   emergencyContact: { type: DataTypes.STRING(120), allowNull: true,  field: 'emergency_contact' },
   bloodGroup:       { type: DataTypes.STRING(4),   allowNull: true,  field: 'blood_group' },
+  visitCategory:    { type: DataTypes.STRING(20),  allowNull: false, defaultValue: 'OPD', field: 'visit_category' },
   version:          { type: DataTypes.BIGINT,      allowNull: false, defaultValue: 0 },
   createdAt:        { type: DataTypes.DATE,        allowNull: false, defaultValue: DataTypes.NOW, field: 'created_at' },
   updatedAt:        { type: DataTypes.DATE,        allowNull: false, defaultValue: DataTypes.NOW, field: 'updated_at' },

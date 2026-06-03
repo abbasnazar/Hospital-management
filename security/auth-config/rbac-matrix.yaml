@@ -1,6 +1,7 @@
 # Coarse-grained RBAC enforced at the API Gateway.
 # Fine-grained, row-level checks are enforced within each service.
 rbac:
+  # Patient Management
   - resource: /api/v1/patients
     verbs: [GET]
     roles: [ADMIN, DOCTOR, NURSE, LAB_TECH, PHARMACIST, RECEPTIONIST]
@@ -10,24 +11,108 @@ rbac:
   - resource: /api/v1/appointments
     verbs: [POST]
     roles: [ADMIN, RECEPTIONIST, DOCTOR, NURSE, PATIENT]
+
+  # Clinical Services
   - resource: /api/v1/consultations
     verbs: [POST, PUT]
     roles: [DOCTOR]
   - resource: /api/v1/lab
     verbs: [POST]
     roles: [DOCTOR, NURSE, LAB_TECH]
+  
+  # Prescription Service (NEW)
   - resource: /api/v1/prescriptions
-    verbs: [POST]
+    verbs: [POST, GET, PUT]
     roles: [DOCTOR]
+  - resource: /api/v1/prescriptions/*
+    verbs: [GET]
+    roles: [DOCTOR, PATIENT, PHARMACIST]
+
+  # Medical Records Service (NEW)
+  - resource: /api/v1/patients/*/complete-record
+    verbs: [GET]
+    roles: [DOCTOR, NURSE, PATIENT]
+  - resource: /api/v1/patients/*/allergies
+    verbs: [GET]
+    roles: [DOCTOR, NURSE, PHARMACIST]
+  - resource: /api/v1/patients/*/allergies
+    verbs: [POST]
+    roles: [DOCTOR, NURSE]
+  - resource: /api/v1/patients/*/medications
+    verbs: [GET]
+    roles: [DOCTOR, NURSE, PHARMACIST]
+  - resource: /api/v1/patients/*/diagnoses
+    verbs: [GET]
+    roles: [DOCTOR, NURSE, PATIENT]
+  - resource: /api/v1/patients/*/documents
+    verbs: [GET, POST]
+    roles: [DOCTOR, NURSE, PATIENT]
+
+  # Clinical Support Service (NEW)
+  - resource: /api/v1/clinical/check-interactions
+    verbs: [POST]
+    roles: [DOCTOR, PHARMACIST]
+  - resource: /api/v1/clinical/check-contraindications
+    verbs: [POST]
+    roles: [DOCTOR, PHARMACIST]
+  - resource: /api/v1/clinical/dosage-guidelines/*
+    verbs: [GET]
+    roles: [DOCTOR, PHARMACIST, NURSE]
+  - resource: /api/v1/clinical/allergy-alert
+    verbs: [POST]
+    roles: [DOCTOR, PHARMACIST]
+
+  # IPD Service (NEW)
+  - resource: /api/v1/ipd/admissions
+    verbs: [POST]
+    roles: [DOCTOR, ADMIN, NURSE]
+  - resource: /api/v1/ipd/admissions/*
+    verbs: [GET]
+    roles: [DOCTOR, NURSE, ADMIN]
+  - resource: /api/v1/ipd/bed-assignment
+    verbs: [POST]
+    roles: [ADMIN, NURSE]
+  - resource: /api/v1/ipd/discharges
+    verbs: [POST]
+    roles: [DOCTOR, ADMIN]
+  - resource: /api/v1/ipd/ward/*/census
+    verbs: [GET]
+    roles: [ADMIN, NURSE, DOCTOR]
+  - resource: /api/v1/ipd/wards
+    verbs: [GET]
+    roles: [ADMIN, NURSE, DOCTOR]
+
+  # Notification Service (NEW)
+  - resource: /api/v1/notifications/messages
+    verbs: [POST, GET]
+    roles: [DOCTOR, PATIENT, NURSE, ADMIN]
+  - resource: /api/v1/notifications
+    verbs: [POST]
+    roles: [SYSTEM, ADMIN]
+  - resource: /api/v1/notifications/appointment-reminders
+    verbs: [POST]
+    roles: [SYSTEM, ADMIN]
+  - resource: /api/v1/notifications/user
+    verbs: [GET]
+    roles: [DOCTOR, PATIENT, NURSE, ADMIN]
+  - resource: /api/v1/notifications/*/*
+    verbs: [PUT]
+    roles: [PATIENT, DOCTOR, NURSE, ADMIN]
+
+  # Pharmacy
   - resource: /api/v1/dispenses
     verbs: [POST]
     roles: [PHARMACIST]
+  
+  # Billing
   - resource: /api/v1/invoices
     verbs: [POST]
     roles: [ADMIN, RECEPTIONIST]
   - resource: /api/v1/payments
     verbs: [POST]
     roles: [ADMIN, RECEPTIONIST, PATIENT]
+  
+  # Reporting
   - resource: /api/v1/reports
     verbs: [GET]
     roles: [ADMIN, DOCTOR]

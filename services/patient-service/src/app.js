@@ -19,6 +19,7 @@ function createApp() {
 
   const patientRouter     = express.Router();
   require('./controllers/patient.controller')(patientRouter);
+  require('./controllers/patient-extended.controller')(patientRouter);
   app.use('/api/v1/patients', patientRouter);
 
   const apptRouter        = express.Router();

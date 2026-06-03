@@ -13,6 +13,7 @@ A cloud-native, microservices-based Hospital Management Information System.
 ├───────────────────────────────────────────────────────────────────────┤
 │   APPLICATION SERVICES  (Node.js microservices, per-bounded-context)  │
 │   Auth | Patient | Doctor | Lab | Pharmacy | Billing | Reporting      │
+│   Prescription | Medical Records | Clinical Support | IPD | Notification │
 ├───────────────────────────────────────────────────────────────────────┤
 │  INTEGRATION LAYER  (HL7, FHIR, DICOM stubs, payment gateway)         │
 ├───────────────────────────────────────────────────────────────────────┤
@@ -56,6 +57,11 @@ A cloud-native, microservices-based Hospital Management Information System.
 | `pharmacy-service` | 8085 | Medicine master, batches, prescriptions, dispensing      |
 | `billing-service`  | 8086 | Invoices, payments, insurance claims                     |
 | `reporting-service`| 8087 | Daily MIS, revenue, Power BI JSON endpoints              |
+| `prescription-service` | 8088 | Prescription management with clinical notes and approval |
+| `medical-records-service` | 8089 | Patient medical history, allergies, documents |
+| `clinical-support-service` | 8090 | Drug interactions, dosage guidelines, contraindications |
+| `ipd-service` | 8091 | In-patient admissions, bed management, discharge |
+| `notification-service` | 8092 | Messages, notifications, appointment reminders |
 
 ## Repository layout
 
@@ -138,3 +144,4 @@ Runs Newman (API), PyTest (integration + security), then Locust (50u / 2min).
 - [Architecture diagrams](./docs/ARCHITECTURE/architecture_diagrams.md)
 - [API](./docs/API_DOCS/api_documentation.md)
 - [Deployment](./docs/DEPLOYMENT/deployment_guide.md)
+- [**New Services Implementation**](./docs/SERVICES_IMPLEMENTATION.md) — Phase 1 enhancement: Prescription, Medical Records, Clinical Support, IPD, Notification services

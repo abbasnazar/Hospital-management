@@ -249,6 +249,182 @@ GET /api/v1/reports/powerbi/invoices?$top=1000&$skip=0&$filter=status%20eq%20%27
 - `Idempotency-Key: <uuid>` (recommended for POST payments, invoices, dispenses)
 - `traceparent:` — propagated trace context (W3C)
 
+---
+
+## 11. Prescription Service — `prescription-service`
+
+```
+POST /api/v1/prescriptions                  create prescription
+GET  /api/v1/prescriptions/{id}             get prescription details
+PUT  /api/v1/prescriptions/{id}             modify prescription (before dispensing)
+POST /api/v1/prescriptions/{id}/sign        sign/approve prescription
+POST /api/v1/prescriptions/{id}/cancel      cancel prescription
+POST /api/v1/prescriptions/{id}/notes/add   add clinical notes to prescription
+GET  /api/v1/prescriptions/patient/{id}    get patient prescription history
+```
+
+**Create Prescription Request**
+```json
+{
+  "encounterId": 55,
+  "patientId": 101,
+  "items": [
+    {
+      "medicineId": 5,
+      "dose": "500mg",
+      "frequency": "Twice daily",
+      "durationDays": 5,
+      "qty": 10,
+      "instructions": "Take with food",
+      "clinicalReason": "For fever management"
+    }
+  ],
+  "clinicalNotes": "Patient allergic to sulfa drugs"
+}
+```
+
+---
+
+## 12. Medical Records Service — `medical-records-service`
+
+```
+GET  /api/v1/patients/{id}/complete-record     get full medical history
+GET  /api/v1/patients/{id}/allergies           get patient allergies
+POST /api/v1/patients/{id}/allergies           add allergy record
+GET  /api/v1/patients/{id}/medications         get medication history
+GET  /api/v1/patients/{id}/diagnoses           get diagnosis history
+GET  /api/v1/patients/{id}/consultations       get consultation history
+GET  /api/v1/patients/{id}/documents           get uploaded medical documents
+POST /api/v1/patients/{id}/documents           upload medical document (X-ray, ECG, etc.)
+GET  /api/v1/patients/{id}/vitals              get vital signs history
+```
+
+**Add Allergy Request**
+```json
+{
+  "allergen": "Penicillin",
+  "reactionType": "Anaphylaxis",
+  "severity": "SEVERE"
+}
+```
+
+**Upload Document Request**
+```json
+{
+  "type": "XRAY",
+  "fileUrl": "s3://hmis-bucket/patient-101/xray-chest-20260525.pdf"
+}
+```
+
+---
+
+## 13. Clinical Support Service — `clinical-support-service`
+
+```
+POST /api/v1/clinical/check-interactions       check drug-drug interactions
+POST /api/v1/clinical/check-contraindications  check medicine contraindications
+GET  /api/v1/clinical/dosage-guidelines/{drugCode}  get standard dosing guidelines
+GET  /api/v1/clinical/audit-trail/{doctorId}  get prescribing audit trail
+POST /api/v1/clinical/allergy-alert            check allergy alerts
+```
+
+**Check Interactions Request**
+```json
+{
+  "drug1Id": 5,
+  "drug2Id": 12
+}
+```
+
+**Response**
+```json
+{
+  "drug1Id": 5,
+  "drug2Id": 12,
+  "interactionLevel": "MODERATE",
+  "severity": "MEDIUM",
+  "description": "Increased risk of GI bleeding. Monitor PT/INR closely.",
+  "timestamp": "2026-05-25T10:30:00Z"
+}
+```
+
+---
+
+## 14. IPD Service (In-Patient Department) — `ipd-service`
+
+```
+POST /api/v1/ipd/admissions                    create admission
+GET  /api/v1/ipd/admissions/{id}              get admission details
+POST /api/v1/ipd/bed-assignment                assign bed to patient
+POST /api/v1/ipd/discharges                    discharge patient
+GET  /api/v1/ipd/ward/{wardId}/census          get ward occupancy
+GET  /api/v1/ipd/wards                         get all wards status
+GET  /api/v1/ipd/patients/{patientId}/current-admission  get current admission
+```
+
+**Create Admission Request**
+```json
+{
+  "patientId": 101,
+  "doctorId": 22,
+  "admissionType": "PLANNED",
+  "reason": "Appendectomy",
+  "expectedStay": 3
+}
+```
+
+**Assign Bed Request**
+```json
+{
+  "wardId": 1,
+  "bedNumber": "ICU-B5",
+  "admissionId": 55
+}
+```
+
+**Discharge Request**
+```json
+{
+  "admissionId": 55,
+  "dischargeType": "HOME",
+  "dischargeSummary": "Patient recovered well. Continue medications. Follow-up in 2 weeks.",
+  "followUpDate": "2026-06-08"
+}
+```
+
+---
+
+## 15. Notification Service — `notification-service`
+
+```
+POST /api/v1/notifications/messages            send doctor-patient message
+GET  /api/v1/notifications/messages            get message inbox
+POST /api/v1/notifications                     send notification (admin only)
+POST /api/v1/notifications/appointment-reminders  schedule appointment reminder
+GET  /api/v1/notifications/user                get user notifications
+PUT  /api/v1/notifications/{id}/read           mark notification as read
+```
+
+**Send Message Request**
+```json
+{
+  "recipientId": 101,
+  "subject": "Prescription Ready",
+  "body": "Your prescribed antibiotics are ready for pickup at pharmacy.",
+  "messageType": "CLINICAL"
+}
+```
+
+**Appointment Reminder Request**
+```json
+{
+  "appointmentId": 123,
+  "patientId": 101,
+  "reminderType": "BOTH",
+  "hoursBeforeAppointment": 24
+}
+```
+
 ## 11. Rate Limits
 
 Default: **100 rps** per token, burst 200 (configured at gateway). Customisable per role.

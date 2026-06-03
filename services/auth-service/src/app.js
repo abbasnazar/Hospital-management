@@ -37,6 +37,16 @@ function createApp() {
   require('./controllers/auth.controller')(router);
   app.use('/api/v1/auth', router);
 
+  // --- Admin routes (SuperAdmin + Admin) ------------------------------------
+  const authRequired = require('./middleware/authRequired');
+  const { requireSuperAdmin, requireAdminOrAbove } = require('./middleware/roleCheck');
+
+  const superadminRouter = require('./controllers/superadmin.controller');
+  const adminRouter      = require('./controllers/admin.controller');
+
+  app.use('/api/v1/auth/superadmin', authRequired, requireSuperAdmin, superadminRouter);
+  app.use('/api/v1/auth/admin',      authRequired, requireAdminOrAbove, adminRouter);
+
   app.use(errorHandler);
   return app;
 }

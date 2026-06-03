@@ -4,12 +4,14 @@ const jwt    = require('jsonwebtoken');
 const { v4: uuid } = require('uuid');
 const config = require('../config');
 
-function signAccessToken(user, roles) {
+function signAccessToken(user, roles, functionalities) {
   const payload = {
     sub:   user.username,
     uid:   user.id,
     email: user.email,
+    orgId: user.orgId,
     roles: roles.map((r) => r.code),
+    funcs: (functionalities || []).map((f) => f.code || f),
     type:  'access',
   };
   return jwt.sign(payload, config.jwt.secret, {

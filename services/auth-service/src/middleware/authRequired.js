@@ -9,7 +9,7 @@ function authRequired(req, _res, next) {
 
   try {
     const claims = jwtSvc.verify(hdr.substring(7));
-    req.user = { id: claims.uid, username: claims.sub, roles: claims.roles || [] };
+    req.user = { id: claims.uid, username: claims.sub, roles: claims.roles || [], orgId: claims.orgId, funcs: claims.funcs || [] };
     next();
   } catch (e) { next(Unauthorized('invalid or expired token')); }
 }

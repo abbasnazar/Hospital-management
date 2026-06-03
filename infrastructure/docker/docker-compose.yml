@@ -44,7 +44,7 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ../../database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
@@ -57,7 +57,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       <<: *healthy
@@ -122,6 +122,79 @@ services:
     ports: ["8087:8087"]
     restart: unless-stopped
 
+  prescription-service:
+    build: ../../services/prescription-service
+    environment: { <<: *node-env, PORT: "8088" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8088:8088"]
+    restart: unless-stopped
+
+  medical-records-service:
+    build: ../../services/medical-records-service
+    environment: { <<: *node-env, PORT: "8089" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8089:8089"]
+    restart: unless-stopped
+
+  clinical-support-service:
+    build: ../../services/clinical-support-service
+    environment: { <<: *node-env, PORT: "8090" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8090:8090"]
+    restart: unless-stopped
+
+  ipd-service:
+    build: ../../services/ipd-service
+    environment: { <<: *node-env, PORT: "8091" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8091:8091"]
+    restart: unless-stopped
+
+  notification-service:
+    build: ../../services/notification-service
+    environment: { <<: *node-env, PORT: "8092" }
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports: ["8092:8092"]
+    restart: unless-stopped
+
+  frontdesk-service:
+    build: ../../services/frontdesk-service
+    environment: { <<: *node-env, PORT: "8093" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8093:8093"]
+    restart: unless-stopped
+
+  hr-service:
+    build: ../../services/hr-service
+    environment: { <<: *node-env, PORT: "8094" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8094:8094"]
+    restart: unless-stopped
+
+  assets-service:
+    build: ../../services/assets-service
+    environment: { <<: *node-env, PORT: "8095" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8095:8095"]
+    restart: unless-stopped
+
+  quality-service:
+    build: ../../services/quality-service
+    environment: { <<: *node-env, PORT: "8096" }
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports: ["8096:8096"]
+    restart: unless-stopped
+
   # ---------------------------------------------------------------------------
   # API Gateway
   # ---------------------------------------------------------------------------
@@ -133,13 +206,22 @@ services:
       JWT_SECRET: "dev-secret-change-me-change-me-change-me-change-me-64chars"
       JWT_ISSUER: hmis-auth
       REDIS_URL: redis://redis:6379
-      AUTH_URL:      http://auth-service:8081
-      PATIENT_URL:   http://patient-service:8082
-      DOCTOR_URL:    http://doctor-service:8083
-      LAB_URL:       http://lab-service:8084
-      PHARMACY_URL:  http://pharmacy-service:8085
-      BILLING_URL:   http://billing-service:8086
-      REPORTING_URL: http://reporting-service:8087
+      AUTH_URL:       http://auth-service:8081
+      PATIENT_URL:    http://patient-service:8082
+      DOCTOR_URL:     http://doctor-service:8083
+      LAB_URL:        http://lab-service:8084
+      PHARMACY_URL:   http://pharmacy-service:8085
+      BILLING_URL:    http://billing-service:8086
+      REPORTING_URL:  http://reporting-service:8087
+      PRESCRIPTION_URL:      http://prescription-service:8088
+      MEDICAL_RECORDS_URL:   http://medical-records-service:8089
+      CLINICAL_SUPPORT_URL:  http://clinical-support-service:8090
+      IPD_URL:               http://ipd-service:8091
+      NOTIFICATION_URL:      http://notification-service:8092
+      FRONTDESK_URL:         http://frontdesk-service:8093
+      HR_URL:                http://hr-service:8094
+      ASSETS_URL:            http://assets-service:8095
+      QUALITY_URL:           http://quality-service:8096
     depends_on:
       - auth-service
       - patient-service
@@ -148,6 +230,15 @@ services:
       - pharmacy-service
       - billing-service
       - reporting-service
+      - prescription-service
+      - medical-records-service
+      - clinical-support-service
+      - ipd-service
+      - notification-service
+      - frontdesk-service
+      - hr-service
+      - assets-service
+      - quality-service
     ports: ["8080:8080"]
     restart: unless-stopped
 

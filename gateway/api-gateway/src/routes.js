@@ -40,14 +40,26 @@ function proxy(target, prefix) {
  * pathRewrite restores the prefix that Express strips before calling the proxy.
  */
 module.exports = (app) => {
-  app.use('/api/v1/auth',         proxy(config.upstream.auth,      '/api/v1/auth'));
-  app.use('/api/v1/patients',     proxy(config.upstream.patient,   '/api/v1/patients'));
-  app.use('/api/v1/appointments', proxy(config.upstream.patient,   '/api/v1/appointments'));
-  app.use('/api/v1/clinical',     proxy(config.upstream.doctor,    '/api/v1/clinical'));
-  app.use('/api/v1/lab',          proxy(config.upstream.lab,       '/api/v1/lab'));
-  app.use('/api/v1/pharmacy',     proxy(config.upstream.pharmacy,  '/api/v1/pharmacy'));
-  app.use('/api/v1/invoices',     proxy(config.upstream.billing,   '/api/v1/invoices'));
-  app.use('/api/v1/payments',     proxy(config.upstream.billing,   '/api/v1/payments'));
-  app.use('/api/v1/claims',       proxy(config.upstream.billing,   '/api/v1/claims'));
-  app.use('/api/v1/reports',      proxy(config.upstream.reporting, '/api/v1/reports'));
+  app.use('/api/v1/auth',         proxy(config.upstream.auth,            '/api/v1/auth'));
+  app.use('/api/v1/patients',     proxy(config.upstream.patient,         '/api/v1/patients'));
+  app.use('/api/v1/appointments', proxy(config.upstream.patient,         '/api/v1/appointments'));
+  app.use('/api/v1/clinical',     proxy(config.upstream.doctor,          '/api/v1/clinical'));
+  app.use('/api/v1/lab',          proxy(config.upstream.lab,             '/api/v1/lab'));
+  app.use('/api/v1/pharmacy',     proxy(config.upstream.pharmacy,        '/api/v1/pharmacy'));
+  app.use('/api/v1/invoices',     proxy(config.upstream.billing,         '/api/v1/invoices'));
+  app.use('/api/v1/payments',     proxy(config.upstream.billing,         '/api/v1/payments'));
+  app.use('/api/v1/claims',       proxy(config.upstream.billing,         '/api/v1/claims'));
+  app.use('/api/v1/reports',      proxy(config.upstream.reporting,       '/api/v1/reports'));
+  app.use('/api/v1/prescriptions',   proxy(config.upstream.prescription,  '/api/v1/prescriptions'));
+  app.use('/api/v1/medical-records', proxy(config.upstream.medicalRecords,'/api/v1/medical-records'));
+  app.use('/api/v1/clinical-support',proxy(config.upstream.clinicalSupport,'/api/v1/clinical-support'));
+  app.use('/api/v1/ipd',          proxy(config.upstream.ipd,             '/api/v1/ipd'));
+  app.use('/api/v1/notifications',proxy(config.upstream.notification,    '/api/v1/notifications'));
+  app.use('/api/v1/triage',       proxy(config.upstream.frontdesk,       '/api/v1/triage'));
+  app.use('/api/v1/checkins',     proxy(config.upstream.frontdesk,       '/api/v1/checkins'));
+  app.use('/api/v1/queue',        proxy(config.upstream.frontdesk,       '/api/v1/queue'));
+  app.use('/api/v1/emergency',    proxy(config.upstream.frontdesk,       '/api/v1/emergency'));
+  app.use('/api/v1/hr',           proxy(config.upstream.hr,              '/api/v1/hr'));
+  app.use('/api/v1/assets',       proxy(config.upstream.assets,          '/api/v1/assets'));
+  app.use('/api/v1/quality',      proxy(config.upstream.quality,         '/api/v1/quality'));
 };

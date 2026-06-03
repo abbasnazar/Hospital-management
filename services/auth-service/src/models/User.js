@@ -7,6 +7,7 @@ const User = sequelize.define('User', {
   id:              { type: DataTypes.BIGINT.UNSIGNED, primaryKey: true, autoIncrement: true },
   username:        { type: DataTypes.STRING(80),  allowNull: false, unique: true },
   email:           { type: DataTypes.STRING(160), allowNull: false, unique: true },
+  orgId:           { type: DataTypes.BIGINT.UNSIGNED, allowNull: true, field: 'org_id' },
   passwordHash:    { type: DataTypes.STRING(200), allowNull: false, field: 'password_hash' },
   mfaSecret:       { type: DataTypes.STRING(64),  allowNull: true,  field: 'mfa_secret' },
   mfaEnabled:      { type: DataTypes.BOOLEAN,     allowNull: false, defaultValue: false, field: 'mfa_enabled' },

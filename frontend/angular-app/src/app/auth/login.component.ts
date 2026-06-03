@@ -11,8 +11,8 @@ import { AuthService } from '../core/services/auth.service';
   template: `
     <div class="login-wrap">
       <div class="card login-card">
-        <h1>HMIS Login</h1>
-        <p class="muted">Sign in to access the hospital management system</p>
+        <h1>ZYVRAA Login</h1>
+        <p class="muted">Healthcare Management Simplified</p>
         <form (ngSubmit)="submit()">
           <label>Username</label>
           <input name="u" [(ngModel)]="username" required autocomplete="username">
